@@ -1,0 +1,18 @@
+*VERTICES
+*INCLUDE thin1layer.node
+
+*ELEMENTS
+TETS
+*INCLUDE thin1layer.ele
+
+*MATERIAL epidermis
+ENU, 1000, 6E8, 0.4
+
+*MATERIAL dermis
+ENU, 1000, 4E6, 0.4
+
+*MATERIAL substrate
+ENU, 1000, 5E5, 0.4
+
+*REGION
+allElements, substrate
