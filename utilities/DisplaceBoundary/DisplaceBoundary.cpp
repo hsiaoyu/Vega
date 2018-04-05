@@ -46,9 +46,10 @@ int main(int argc, char * argv[]){
        exit(1);
     }
     
+    int r = 3 * tetMesh->getNumVertices(); // total number of DOFs
+    
     Xmax = -1*volumetricMesh->getVertex(0)[0]; //TODO:modify the value based on the mesh
     cout << "Xmax = " << Xmax << endl;
-    int r = 3 * tetMesh->getNumVertices(); // total number of DOFs
    
     //Get output file name
     string outName;
@@ -97,8 +98,10 @@ int main(int argc, char * argv[]){
     ifs >> dampingStiffnessCoef;
     double DisTot;
     ifs >> DisTot;
-    double rampUpTime;
-    ifs >> rampUpTime;
+    double delx;
+    ifs >> delx;
+    int nEqual; // number of equilibruim steps before applying next displacement
+    ifs >> nEqual;
     
     double timestep; // the timestep, in seconds
     ifs >> timestep;
@@ -108,17 +111,8 @@ int main(int argc, char * argv[]){
     cout << "Total displacement: " << DisTot <<"Time Step: " << timestep <<  " #steps: " << numTimesteps << " FrameRate: " << FrameRate << endl;
 
     double * dis = new double[r](); //() initializes all elements with 0
-    double delx = (double) (DisTot * timestep / rampUpTime);
-    int nRamp = rampUpTime / timestep;
-    cout << "delx = " << delx << "  nRamp = " << nRamp << endl; 
-    //HardBoundary(delx, volumetricMesh, disboundary);
-    //setHardBoundary(disboundary, dis);
-    
-    SetDisplacement(dis, *volumetricMesh, delx);
-    
-    //HardBoundary(DisTot, volumetricMesh, disboundary);
-    //setHardBoundary(disboundary, dis);
-    
+    PerturbZ(dis,r);
+    int nRamp = DisTot/delx;
 
     //CorotationalLinearFEM * deformableModel = new CorotationalLinearFEM(tetMesh);
     ////create the class to connect the deformable model to the integrator
@@ -134,64 +128,39 @@ int main(int argc, char * argv[]){
     // create consistent (non-lumped) mass matrix
     GenerateMassMatrix::computeMassMatrix(tetMesh, &massMatrix, true);
 
-
     // (tangential) Rayleigh damping
     double dampingMassCoef = 0.0; // "underwater"-like damping (here turned off)
     // initialize the integrator
     ImplicitBackwardEulerSparse * implicitBackwardEulerSparse = new ImplicitBackwardEulerSparse(r, timestep, massMatrix, forceModel, numConstrainedDOFs, constrainedDOFs, numDynamicConstrainedDOFs, constrainedDynamicDOFs, dampingMassCoef, dampingStiffnessCoef);
     //ImplicitBackwardEulerSparse * implicitBackwardEulerSparse = new ImplicitBackwardEulerSparse(r, timestep, massMatrix, forceModel, numConstrainedDOFs, constrainedDOFs, 0, NULL, dampingMassCoef, dampingStiffnessCoef);
-    cout << "Initiating Implicit Solver" << endl;
-    // // Set velocity
-    // double * vel = new double[r](); //() initializes all elements with 0
-    // vector<LocalDisplacement> velboundary;
-    // velboundary = disboundary;
-    // HardBoundary(DisTot, volumetricMesh, velboundary);
-    // setHardBoundary(velboundary, vel);
-    // implicitBackwardEulerSparse->SetState(dis, vel);
-    implicitBackwardEulerSparse->SetState(dis);
     implicitBackwardEulerSparse->SetExternalForcesToZero();
-     
+    implicitBackwardEulerSparse->SetState(dis);
+    int nDisInc = 0;
+    
     for(int i=0; i<numTimesteps; i++)
     {
        // important: must always clear forces, as they remain in effect unless changed
-       implicitBackwardEulerSparse->GetqState(dis);
        if (i%FrameRate==0){
           ofstream ofs;
           stringstream FileName; 
           FileName << outName <<  "_" << i/FrameRate << ".node"; 
           ofs.open(FileName.str()); 
           ofs << volumetricMesh->getNumVertices() << " 3 0 0 " << endl; 
+          implicitBackwardEulerSparse->GetqState(dis);
           for(int j=0; j<volumetricMesh->getNumVertices(); j++){
               Vec3d & v = volumetricMesh->getVertex(j);
               ofs << j+1 << " " << v[0]+dis[3*j] << " " << v[1]+dis[3*j+1] << " " << v[2]+dis[3*j+2] << endl; 
           }
           ofs.close();
-         // cout << i << "set state" << endl;
-         // cout << 0 << " " << vel[0] << " "  << vel[1] << " " << vel[2] <<  endl;
        }
-      // cout << i << "  new state" << endl;
-      // for(int j=80; j<100; j++)
-      //    cout << j+1 << " " << dis[3*j] << endl;
-
-       if(i<nRamp){
-          double newDelx;
-          newDelx = (i+2) *delx ;
-          SetDisplacement(dis,volumetricMesh,delx);
-          //HardBoundary(newDelx, volumetricMesh, disboundary);
-       }
-
        
-       //setHardBoundary(disboundary, dis);
-       //implicitBackwardEulerSparse->SetState(dis);
-       //if(i<nRamp){
-       //   setHardBoundary(velboundary, vel);
-       //   implicitBackwardEulerSparse->SetState(dis,vel);
-       //}
-       //if(i%FrameRate==0){ 
-       //  cout << i << "set state" << endl;
-       //  for(int j=0; j<r/3; j++)
-       //      cout << j+1 << " " << vel[3*j] << " "  << vel[3*j+1] << " " << vel[3*j+2] <<  endl;
-       //}
+       if(nDisInc < nRamp && i%nEqual ==0){
+          implicitBackwardEulerSparse->GetqState(dis);
+          SetDisplacement(dis,*volumetricMesh,delx);
+          implicitBackwardEulerSparse->SetState(dis);
+          nDisInc ++;
+       }
+       
        implicitBackwardEulerSparse->DoTimestep();
     }
 
@@ -202,13 +171,19 @@ int main(int argc, char * argv[]){
 //negative x with a positive displacement and vice versa
 //void SetDisplacement(double * u, const  VolumetricMesh &Mesh, double ratio){
 void SetDisplacement(double * u, VolumetricMesh &Mesh, double delx){
-       srand(time(NULL));
+       Xmax = -1*(Mesh.getVertex(0)[0]+u[0]); //TODO:modify the value based on the mesh
        for(int i=0; i<Mesh.getNumVertices(); i++){
          const Vec3d &v = Mesh.getVertex(i);
-	 u[3*i] = -1 * v[0] * delx/Xmax;
-         u[3*i+2] += ((double) rand()/ (RAND_MAX)) * 2e-5 - 1e-5;
+         double newDx = -1 * (v[0]+u[3*i]) * delx/Xmax;
+         u[3*i] += newDx;
        }
-     
+}
+
+void PerturbZ(double *u, double r)
+{
+       srand(time(NULL));
+       for(int i=0; i<r/3; i++)
+         u[3*i+2] += ((double) rand()/ (RAND_MAX)) * 2e-5 - 1e-5;
 }
 
 void findBoundary(string Filename1, string Filename2, vector<LocalDisplacement> &Bound){
