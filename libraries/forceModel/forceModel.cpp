@@ -36,6 +36,10 @@ ForceModel::~ForceModel()
 {
 }
 
+//double GetEnergy(double * u)
+//{
+//  return GetElasticEnergy(u);
+//}
 void ForceModel::GetForceAndMatrix(double * u, double * internalForces, SparseMatrix * tangentStiffnessMatrix)
 {
   GetInternalForce(u, internalForces);

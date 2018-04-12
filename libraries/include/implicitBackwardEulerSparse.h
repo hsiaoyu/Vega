@@ -50,6 +50,7 @@ public:
   // returns 0 
   virtual int SetState(double * q, double * qvel=NULL);
   virtual int DoTimestep(); 
+  //virtual double getEnergy(double * u);
 
 protected:
 };

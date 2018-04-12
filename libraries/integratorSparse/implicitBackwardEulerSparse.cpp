@@ -55,6 +55,13 @@ int ImplicitBackwardEulerSparse::SetState(double * q_, double * qvel_)
   return 0;
 }
 
+//double ImplicitBackwardEulerSparse::getEnergy(double * u)
+//{
+//    double energy;
+//    energy = forceModel->GetEnergy(energy);
+//    return energy;
+//}
+
 int ImplicitBackwardEulerSparse::DoTimestep()
 {
   int numIter = 0;

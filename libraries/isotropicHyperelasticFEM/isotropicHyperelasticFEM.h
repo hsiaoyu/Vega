@@ -140,6 +140,8 @@ protected:
   // of the edge vectors of a tet. See p3 section 3 of [Irving 04]
   // length of this array equals to the number of tet in the mesh
   Mat3d * dmInverses;
+  // Growth tensor of each element;
+  Mat3d * Growths;
   // an array of deformation gradient F
   Mat3d * Fs;
   // an array of F^hat (i.e., the principal stretches)
@@ -157,6 +159,8 @@ protected:
   void ComputeAreaWeightedVertexNormals();
   // compute inv(Dm)
   void PrepareDeformGrad(); // called once in the constructor
+  //Compute Growth Tensor
+  void DetermineGrowth();
 
   // Compute strain energy based on the user-specified material
   virtual double ComputeEnergyFromStretches(int elementIndex, double * lambda);

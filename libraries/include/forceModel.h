@@ -51,6 +51,7 @@ public:
 
   // sometimes computation time can be saved if we know that we will need both internal forces and tangent stiffness matrices:
   virtual void GetForceAndMatrix(double * u, double * internalForces, SparseMatrix * tangentStiffnessMatrix); 
+//  virtual double GetEnergy(double * u); 
 
   // reset routines
   virtual void ResetToZero() {}

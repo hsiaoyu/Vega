@@ -12,6 +12,7 @@
 #include <vector>
 #include <set>
 #include "neoHookeanIsotropicMaterial.h"
+#include "StVKIsotropicMaterial.h"
 #include "isotropicHyperelasticFEMForceModel.h"
 #include "isotropicHyperelasticFEM.h"
 
@@ -43,12 +44,13 @@ int main(int argc, char * argv[]){
        printf("Error: not a tet mesh.\n");
        exit(1);
     }
-     
     int r = 3 * tetMesh->getNumVertices(); // total number of DOFs
     
    
     string outName;
     getline(ifs, outName);
+    double dampingMassCoef; //= 0.01;  (primarily) high-frequency damping
+    ifs >> dampingMassCoef;
     double dampingStiffnessCoef; //= 0.01;  (primarily) high-frequency damping
     ifs >> dampingStiffnessCoef;
     double timestep;
@@ -59,15 +61,15 @@ int main(int argc, char * argv[]){
         
     int enableConstraintResistance = 0;
     double ConstraintResistance = 0.0;
-    NeoHookeanIsotropicMaterial * neoHookeanModel = new NeoHookeanIsotropicMaterial(tetMesh, enableConstraintResistance, ConstraintResistance);
-    IsotropicHyperelasticFEM * deformableModel = new IsotropicHyperelasticFEM(tetMesh, neoHookeanModel);
-    ForceModel * forceModel = new IsotropicHyperelasticFEMForceModel(deformableModel);
     
+    StVKIsotropicMaterial *stvkModel = new StVKIsotropicMaterial(tetMesh, enableConstraintResistance, ConstraintResistance);
+    IsotropicHyperelasticFEM * deformableModel = new IsotropicHyperelasticFEM(tetMesh, stvkModel);
+    ForceModel * forceModel = new IsotropicHyperelasticFEMForceModel(deformableModel);
+ 
     SparseMatrix * massMatrix;
     GenerateMassMatrix::computeMassMatrix(tetMesh, &massMatrix, true);
 
-
-    double dampingMassCoef = 0.0; // "underwater"-like damping (here turned off)
+    //double dampingMassCoef = 0.0; // "underwater"-like damping (here turned off)
     //ImplicitBackwardEulerSparse * implicitBackwardEulerSparse = new ImplicitBackwardEulerSparse(r, timestep, massMatrix, forceModel, numConstrainedDOFs, constrainedDOFs, numDynamicConstrainedDOFs, constrainedDynamicDOFs, dampingMassCoef, dampingStiffnessCoef);
     ImplicitBackwardEulerSparse * implicitBackwardEulerSparse = new ImplicitBackwardEulerSparse(r, timestep, massMatrix, forceModel, 0, NULL, 0, NULL, dampingMassCoef, dampingStiffnessCoef);
     
@@ -91,6 +93,7 @@ int main(int argc, char * argv[]){
           ofs.close();
        }
 
+       cout << "timestep : " << i <<" Energy: " << deformableModel->ComputeEnergy(dis) << endl;
        implicitBackwardEulerSparse->DoTimestep();
     }
 

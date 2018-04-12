@@ -4,7 +4,7 @@
 
 using namespace std;
 using namespace Eigen;
-int currentFrame = 0;
+int currentFrame;
 MatrixXd Verts;
 MatrixXi Elements;
 const char * VertsName;
@@ -48,10 +48,11 @@ void displayTet (const char * vertsName, char const* EleName){
     }
     Elements -= MatrixXi::Constant(nEle, 4, 1);
   */
-
+    cout << "Enter Starting Frame : " << endl;
+    cin >> currentFrame;
     VertsName = vertsName;
     stringstream VertsFile;
-    VertsFile << VertsName << "_" << 0 << ".node"; 
+    VertsFile << VertsName << "_" << currentFrame << ".node"; 
     Verts2Matrix(VertsFile.str());
    // cout << Verts << endl;
     

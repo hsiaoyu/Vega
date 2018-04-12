@@ -61,6 +61,12 @@ int main(int argc, char * argv[]){
     set<int> constDOFs;
     numConstrainedDOFs = Constraints(constDOFs, str,3);
     
+    //get Boundary front and back
+    getline(ifs, str);
+    getline(ifs, str1);
+    numConstrainedDOFs = Constraints(constDOFs, str,2);
+    numConstrainedDOFs = Constraints(constDOFs, str1,2);
+
     //get Boundary left and right
     getline(ifs, str);
     getline(ifs, str1);
@@ -68,11 +74,6 @@ int main(int argc, char * argv[]){
     numConstrainedDOFs = Constraints(constDOFs, str,2);
     numConstrainedDOFs = Constraints(constDOFs, str1,3);
     numConstrainedDOFs = Constraints(constDOFs, str1,2);
-
-    int numDynamicConstrainedDOFs;
-    set<int> constDynamicDOFs;
-    numDynamicConstrainedDOFs = Constraints(constDynamicDOFs, str,1);
-    numDynamicConstrainedDOFs = Constraints(constDynamicDOFs, str1,1);
     
     int constrainedDOFs[numConstrainedDOFs]; 
     set<int>::iterator setIt = constDOFs.begin();
@@ -82,6 +83,11 @@ int main(int argc, char * argv[]){
         setIt++;
     }
    
+    int numDynamicConstrainedDOFs;
+    set<int> constDynamicDOFs;
+    numDynamicConstrainedDOFs = Constraints(constDynamicDOFs, str,1);
+    numDynamicConstrainedDOFs = Constraints(constDynamicDOFs, str1,1);
+    
     int constrainedDynamicDOFs[numDynamicConstrainedDOFs];
     setIt = constDynamicDOFs.begin();
     for(int i=0; i<numDynamicConstrainedDOFs; i++){

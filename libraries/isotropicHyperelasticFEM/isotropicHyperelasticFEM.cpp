@@ -29,6 +29,7 @@
 #include "isotropicHyperelasticFEM.h"
 #include "matrixIO.h"
 #include "mat3d.h"
+//#include "Eigen/Dense"
 
 #define SVD_singularValue_eps 1e-8
 
@@ -55,6 +56,7 @@ IsotropicHyperelasticFEM::IsotropicHyperelasticFEM(TetMesh * tetMesh_, Isotropic
   // each tet has numElementVertices vertices
   areaWeightedVertexNormals = (Vec3d*) malloc (sizeof(Vec3d) * numElements * tetMesh->getNumElementVertices());
   dmInverses = (Mat3d*) malloc (sizeof(Mat3d) * numElements);
+  Growths = (Mat3d*) malloc (sizeof(Mat3d) * numElements);
   Fs = (Mat3d*) malloc (sizeof(Mat3d) * numElements);
   Fhats = (Vec3d*) malloc (sizeof(Vec3d)* numElements);
   Vs = (Mat3d*) malloc (sizeof(Mat3d) * numElements);
@@ -72,12 +74,13 @@ IsotropicHyperelasticFEM::IsotropicHyperelasticFEM(TetMesh * tetMesh_, Isotropic
     restVerticesPosition[3*i+2] = v[2];
   }
 
-  ComputeTetVolumes();
 
-  ComputeAreaWeightedVertexNormals(); //see p3 section 4 of [Irving 04]
   // precompute dmInverses (D_m^{-1}), which are needed to compute the 
   // deformation gradients at runtime ( F = D_s D_m^{-1} (see [Irving 04]) )
+  DetermineGrowth();
   PrepareDeformGrad(); //see p3 section 3 of [Irving 04]
+  ComputeTetVolumes();
+  ComputeAreaWeightedVertexNormals(); //see p3 section 4 of [Irving 04]
 
   // build stiffness matrix skeleton
   // (i.e., create memory space for the non-zero entries of the stiffness matrix)
@@ -252,8 +255,10 @@ void IsotropicHyperelasticFEM::GetForceAndTangentStiffnessMatrix(double * u, dou
 void IsotropicHyperelasticFEM::ComputeTetVolumes()
 {
   int numElements = tetMesh->getNumElements();
-  for (int el=0; el<numElements; el++)
-    tetVolumes[el] = TetMesh::getTetVolume(tetMesh->getVertex(el, 0), tetMesh->getVertex(el, 1), tetMesh->getVertex(el, 2), tetMesh->getVertex(el, 3));
+  for (int el=0; el<numElements; el++){
+    double swell = Growths[el][0][0] * Growths[el][1][1]; //TODO: Optimize to det(G)
+    tetVolumes[el] = swell * TetMesh::getTetVolume(tetMesh->getVertex(el, 0), tetMesh->getVertex(el, 1), tetMesh->getVertex(el, 2), tetMesh->getVertex(el, 3));
+  }
 }
 
 /*
@@ -269,16 +274,16 @@ void IsotropicHyperelasticFEM::ComputeAreaWeightedVertexNormals()
     Vec3d vb = tetMesh->getVertex(el, 1);
     Vec3d vc = tetMesh->getVertex(el, 2);
     Vec3d vd = tetMesh->getVertex(el, 3);
-
+   
     // compute normals for the four faces: acb, adc, abd, bcd
-    Vec3d acbNormal = cross(vc-va, vb-va); 
-    Vec3d adcNormal = cross(vd-va, vc-va); 
-    Vec3d abdNormal = cross(vb-va, vd-va); 
-    Vec3d bcdNormal = cross(vc-vb, vd-vb); 
+    Vec3d acbNormal = cross(Growths[el] * (vc-va), Growths[el] * (vb-va)); 
+    Vec3d adcNormal = cross(Growths[el] * (vd-va), Growths[el] * (vc-va)); 
+    Vec3d abdNormal = cross(Growths[el] * (vb-va), Growths[el] * (vd-va)); 
+    Vec3d bcdNormal = cross(Growths[el] * (vc-vb), Growths[el] * (vd-vb)); 
 
     // if the tet vertices abcd form a positive orientation, the normals are now correct
     // otherwise, we need to flip them
-    double orientation = dot(vd-va, cross(vb-va, vc-va));
+    double orientation = dot(Growths[el]*(vd-va), cross(Growths[el]*(vb-va), Growths[el]*(vc-va)));
     if (orientation < 0)
     {
       acbNormal *= -1.0;
@@ -314,6 +319,36 @@ void IsotropicHyperelasticFEM::ComputeAreaWeightedVertexNormals()
   }
 }
 
+// Determine Growth Tensor of each element
+void IsotropicHyperelasticFEM::DetermineGrowth()
+{
+  int numElements = tetMesh->getNumElements();
+  for (int el=0; el<numElements; el++)
+  {
+    Vec3d va = tetMesh->getVertex(el, 0);
+    Vec3d vb = tetMesh->getVertex(el, 1);
+    Vec3d vc = tetMesh->getVertex(el, 2);
+    Vec3d vd = tetMesh->getVertex(el, 3);
+    Vec3d centeroid = (va+vb+vc+vd)/4.0;
+    double thickness = 0.001;
+    double gInplane = centeroid[2]/(double)thickness*0.03;  
+    Mat3d tmp(1+gInplane,0,0,0,1+gInplane,0,0,0,1);
+    
+   //-------Cylindrical Cap--------
+    //double gInplane =(double) 2*(centeroid[2]-thickness/2); 
+    //double g = sqrt(1+gInplane);
+    //printf("growth factor %E \n", g); 
+    //Mat3d tmp(g,0,0,0,1,0,0,0,1);
+
+   // Mat3d tmp(1.3,0,0,0,1.3,0,0,0,1);
+    
+    Growths[el] = tmp;
+  }     
+
+  printf("Growth Factor in the %i element is %E %E %E %E %E %E %E %E %E \n", 1, Growths[0][0][0], Growths[0][0][1], Growths[0][0][2], Growths[0][1][0], Growths[0][1][1], Growths[0][1][2], Growths[0][2][0], Growths[0][2][1], Growths[0][2][2]);
+
+}
+
 /*
   Compute the inverse of the Dm matrices.
   The Dm is a 3x3 matrix where the columns are the edge vectors of a
@@ -336,7 +371,7 @@ void IsotropicHyperelasticFEM::PrepareDeformGrad()
     Mat3d tmp(dm1[0], dm2[0], dm3[0], dm1[1], dm2[1], dm3[1], dm1[2], dm2[2], dm3[2]);
     //printf("--- dm ---\n");
     //tmp.print();
-    dmInverses[el] = inv(tmp);
+    dmInverses[el] = inv(Growths[el]*tmp);
     //printf("--- inv(dm) ---\n");
     //dmInverses[e].print();
   }
