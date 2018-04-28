@@ -69,17 +69,12 @@ ImplicitNewmarkSparse::ImplicitNewmarkSparse(int r, double timestep, SparseMatri
   bufferConstrained = (double*) malloc (sizeof(double) * (r - numConstrainedDOFs - numDynamicConstrainedDOFs));
 
   systemMatrix = new SparseMatrix(*tangentStiffnessMatrix);
-  std::cout << "Number of rows for tangentStiffnessMatrix: " << tangentStiffnessMatrix->GetNumRows() << std::endl;
   systemMatrix->RemoveRowsColumns(numConstrainedDOFs, constrainedDOFs);
   systemMatrix->BuildSuperMatrixIndices(numConstrainedDOFs, constrainedDOFs, tangentStiffnessMatrix); //Linking all indices of the systemMatrix to the *new* indices in StiffnessMatrix after column removal
-  std::cout << "Number of rows for systemMatrix: " << systemMatrix->GetNumRows() << std::endl;
   
   systemMatrixSolve = new SparseMatrix(*tangentStiffnessMatrix);
-  std::cout << "Initial number of rows: " << systemMatrixSolve->GetNumRows() << std::endl;
   systemMatrixSolve->RemoveRowsColumns(numTotConstrainedDOFs, TotConstrainedDOFs);
-  std::cout << "After removal number of rows: " << systemMatrixSolve->GetNumRows() << "Number of fixed DOFs : " << numTotConstrainedDOFs << std::endl;
   systemMatrixSolve->BuildSuperMatrixIndices(numTotConstrainedDOFs, TotConstrainedDOFs, tangentStiffnessMatrix); //Linking all indices of the systemMatrix to the *new* indices in StiffnessMatrix after column removal
-  std::cout << "Done building systemMartixSolve" << std::endl;
 
   #ifdef PARDISO
     printf("Creating Pardiso solver. Num threads: %d\n", numSolverThreads);

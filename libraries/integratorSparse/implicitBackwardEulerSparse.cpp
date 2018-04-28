@@ -227,7 +227,7 @@ int ImplicitBackwardEulerSparse::DoTimestep()
     {
       error += bufferConstrained[i] * bufferConstrained[i];
     }
-    std::cout << "error Constrained " << error << std::endl;
+    //std::cout << "error Constrained " << error << std::endl;
 //-------------------------------------------------------------------------------------------
 
     //printf("numIter: %d error2: %G\n", numIter, error);

@@ -16,6 +16,7 @@
 #include "neoHookeanIsotropicMaterial.h"
 #include "isotropicHyperelasticFEMForceModel.h"
 #include "isotropicHyperelasticFEM.h"
+#include <cmath>
 
 using namespace std;
 
@@ -70,13 +71,14 @@ int main(int argc, char * argv[]){
     //get Boundary left and right
     getline(ifs, str);
     getline(ifs, str1);
-    numConstrainedDOFs = Constraints(constDOFs, str,3);
-    numConstrainedDOFs = Constraints(constDOFs, str,2);
-    numConstrainedDOFs = Constraints(constDOFs, str1,3);
-    numConstrainedDOFs = Constraints(constDOFs, str1,2);
-    
+    //numConstrainedDOFs = Constraints(constDOFs, str,3);
+    //numConstrainedDOFs = Constraints(constDOFs, str,2);
+    //numConstrainedDOFs = Constraints(constDOFs, str1,3);
+    //numConstrainedDOFs = Constraints(constDOFs, str1,2);
+    //
     int constrainedDOFs[numConstrainedDOFs]; 
-    set<int>::iterator setIt = constDOFs.begin();
+    set<int>::iterator setIt;
+    setIt = constDOFs.begin();
     for(int i=0; i<numConstrainedDOFs; i++){
         constrainedDOFs[i] = *setIt;
         //cout << constrainedDOFs[i]/3 << " " << constrainedDOFs[i]%3 << endl;
@@ -102,12 +104,16 @@ int main(int argc, char * argv[]){
 
     double dampingStiffnessCoef; //= 0.01;  (primarily) high-frequency damping
     ifs >> dampingStiffnessCoef;
+    double dampingMassCoef; //= 0.01;  (primarily) high-frequency damping
+    ifs >> dampingMassCoef;
     double DisTot;
     ifs >> DisTot;
     double delx;
     ifs >> delx;
     int nEqual; // number of equilibruim steps before applying next displacement
     ifs >> nEqual;
+    //double tolerance; // number of equilibruim steps before applying next displacement
+    //ifs >> tolerance;
     
     double timestep; // the timestep, in seconds
     ifs >> timestep;
@@ -135,7 +141,7 @@ int main(int argc, char * argv[]){
     GenerateMassMatrix::computeMassMatrix(tetMesh, &massMatrix, true);
 
     // (tangential) Rayleigh damping
-    double dampingMassCoef = 0.0; // "underwater"-like damping (here turned off)
+    //double dampingMassCoef = 0.0; // "underwater"-like damping (here turned off)
     // initialize the integrator
     ImplicitBackwardEulerSparse * implicitBackwardEulerSparse = new ImplicitBackwardEulerSparse(r, timestep, massMatrix, forceModel, numConstrainedDOFs, constrainedDOFs, numDynamicConstrainedDOFs, constrainedDynamicDOFs, dampingMassCoef, dampingStiffnessCoef);
     //ImplicitBackwardEulerSparse * implicitBackwardEulerSparse = new ImplicitBackwardEulerSparse(r, timestep, massMatrix, forceModel, numConstrainedDOFs, constrainedDOFs, 0, NULL, dampingMassCoef, dampingStiffnessCoef);
@@ -160,7 +166,26 @@ int main(int argc, char * argv[]){
           ofs.close();
        }
        
+        
        if(nDisInc < nRamp && i%nEqual ==0){
+       //if(nDisInc < nRamp ){
+       //   implicitBackwardEulerSparse->GetqState(dis);
+       //   double * force = new double[r]; //() initializes all elements with 0
+       //   double totalForce=0;
+       //   deformableModel->ComputeForces(dis,force);
+       //   for(int j=0 ; j<r; j++)
+       //       totalForce += abs(force[j]);
+       //
+       //   cout << "Total Force : " << totalForce << endl;
+
+       //   if(totalForce < tolerance)
+       //   {
+       //      SetDisplacement(dis,*volumetricMesh,delx);
+       //      implicitBackwardEulerSparse->SetState(dis);
+       //      nDisInc ++;
+       //   }
+       //   delete(force);
+       
           implicitBackwardEulerSparse->GetqState(dis);
           SetDisplacement(dis,*volumetricMesh,delx);
           implicitBackwardEulerSparse->SetState(dis);
@@ -169,7 +194,13 @@ int main(int argc, char * argv[]){
        
        implicitBackwardEulerSparse->DoTimestep();
     }
-
+    
+    delete(dis);
+    delete(neoHookeanModel); 
+    delete(deformableModel);
+    delete(forceModel);
+    delete(implicitBackwardEulerSparse);
+ 
     return 0;
 }
 

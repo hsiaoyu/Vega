@@ -95,7 +95,11 @@ int main(int argc, char * argv[]){
 
        cout << "timestep : " << i <<" Energy: " << deformableModel->ComputeEnergy(dis) << endl;
        implicitBackwardEulerSparse->DoTimestep();
+       delete(dis);
     }
-
+    delete(stvkModel);
+    delete(deformableModel);
+    delete(forceModel);
+    delete(implicitBackwardEulerSparse);
     return 0;
 }

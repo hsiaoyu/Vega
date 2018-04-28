@@ -163,6 +163,7 @@ IsotropicHyperelasticFEM::~IsotropicHyperelasticFEM()
   free(areaWeightedVertexNormals);
   free(dFdUs);
   free(tetVolumes);
+  free(Growths);
 
   int numElements = tetMesh->getNumElements();
   for (int el=0; el < numElements; el++)
@@ -325,14 +326,14 @@ void IsotropicHyperelasticFEM::DetermineGrowth()
   int numElements = tetMesh->getNumElements();
   for (int el=0; el<numElements; el++)
   {
-    Vec3d va = tetMesh->getVertex(el, 0);
-    Vec3d vb = tetMesh->getVertex(el, 1);
-    Vec3d vc = tetMesh->getVertex(el, 2);
-    Vec3d vd = tetMesh->getVertex(el, 3);
-    Vec3d centeroid = (va+vb+vc+vd)/4.0;
-    double thickness = 0.001;
-    double gInplane = centeroid[2]/(double)thickness*0.03;  
-    Mat3d tmp(1+gInplane,0,0,0,1+gInplane,0,0,0,1);
+    //Vec3d va = tetMesh->getVertex(el, 0);
+    //Vec3d vb = tetMesh->getVertex(el, 1);
+    //Vec3d vc = tetMesh->getVertex(el, 2);
+    //Vec3d vd = tetMesh->getVertex(el, 3);
+    //Vec3d centeroid = (va+vb+vc+vd)/4.0;
+    //double thickness = 0.001;
+    //double gInplane = centeroid[2]/(double)thickness*0.03;  
+    //Mat3d tmp(1+gInplane,0,0,0,1+gInplane,0,0,0,1);
     
    //-------Cylindrical Cap--------
     //double gInplane =(double) 2*(centeroid[2]-thickness/2); 
@@ -340,7 +341,7 @@ void IsotropicHyperelasticFEM::DetermineGrowth()
     //printf("growth factor %E \n", g); 
     //Mat3d tmp(g,0,0,0,1,0,0,0,1);
 
-   // Mat3d tmp(1.3,0,0,0,1.3,0,0,0,1);
+    Mat3d tmp(1,0,0,0,1,0,0,0,1);
     
     Growths[el] = tmp;
   }     
